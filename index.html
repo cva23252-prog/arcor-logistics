@@ -3,34 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arcor Logistics Go</title>
+    <title>Arcor Logistics Go - Tiempo Real</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <!-- Supabase Client Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-150 min-h-screen flex flex-col">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
     <div id="app" class="flex-grow flex flex-col">
-        <!-- Contenido dinámico gestionado por JS -->
         <div class="flex items-center justify-center flex-grow p-6">
             <div class="bg-slate-800 p-8 rounded-2xl shadow-xl max-w-md w-full border border-slate-700 text-center">
-                <div class="bg-amber-500 w-16 h-16 mx-auto rounded-full flex items-center justify-center text-slate-900 text-2xl font-bold mb-4">
+                <div class="bg-amber-500 w-16 h-16 mx-auto rounded-full flex items-center justify-center text-slate-900 text-2xl font-bold mb-4 animate-bounce">
                     <i class="fa-solid fa-truck-fast"></i>
                 </div>
                 <h1 class="text-2xl font-bold text-white mb-2">Arcor Logistics Go</h1>
-                <p class="text-slate-400 text-sm mb-6">Cargando sistema y conectando plataforma...</p>
+                <p class="text-slate-400 text-sm mb-6">Conectando base de datos en vivo...</p>
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto"></div>
             </div>
         </div>
     </div>
 
     <script>
-        // Sistema Base Arcor Logistics Go con persistencia y roles
-        const USERS_KEY = 'arcor_users_v3';
-        const ORDERS_KEY = 'arcor_orders_v3';
-        const SESSION_KEY = 'arcor_session_v3';
+        // CONFIGURACIÓN DE BASE DE DATOS EN LA NUBE (TIEMPO REAL)
+        // Puedes reemplazar estas 2 constantes con tus claves de Supabase o Firebase:
+        const SUPABASE_URL = 'https://tu-proyecto.supabase.co';
+        const SUPABASE_KEY = 'tu-anon-key-aqui';
+
+        let db = null;
+        if (typeof supabase !== 'undefined' && SUPABASE_URL !== 'https://tu-proyecto.supabase.co') {
+            db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        }
+
+        const USERS_KEY = 'arcor_users_v5';
+        const ORDERS_KEY = 'arcor_orders_v5';
+        const SESSION_KEY = 'arcor_session_v5';
+
+        let itemsTemp = [];
 
         function initStorage() {
             if (!localStorage.getItem(USERS_KEY)) {
@@ -61,7 +73,7 @@
                                 <i class="fa-solid fa-box"></i>
                             </div>
                             <h1 class="text-xl font-bold text-white tracking-wide">ARCOR LOGISTICS</h1>
-                            <p class="text-xs text-slate-400 mt-1">Gestión de Distribución en Ruta</p>
+                            <p class="text-xs text-amber-400 font-semibold mt-1">Sincronización Multidispositivo</p>
                         </div>
                         <form id="loginForm" class="space-y-4">
                             <div>
@@ -90,7 +102,7 @@
                     localStorage.setItem(SESSION_KEY, JSON.stringify(found));
                     router();
                 } else {
-                    alert('Usuario o contraseña incorrectos');
+                    alert('Usuario o contraseña incorrectos. Verificá mayúsculas.');
                 }
             });
         }
@@ -104,10 +116,10 @@
                         <div class="bg-amber-500 text-slate-950 p-2 rounded-lg font-bold"><i class="fa-solid fa-shield-halved"></i></div>
                         <div>
                             <h2 class="text-white font-bold text-sm">Panel Administrador</h2>
-                            <p class="text-xs text-slate-400">Control de Personal y Accesos</p>
+                            <p class="text-xs text-slate-400">Personal Registrado</p>
                         </div>
                     </div>
-                    <button onclick="logout()" class="text-slate-400 hover:text-white text-sm font-medium"><i class="fa-solid fa-power-off mr-1">Salir</i></button>
+                    <button onclick="logout()" class="text-slate-400 hover:text-white text-sm font-medium"><i class="fa-solid fa-power-off mr-1"></i> Salir</button>
                 </header>
                 <main class="p-6 max-w-4xl mx-auto w-full space-y-6">
                     <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
@@ -128,7 +140,7 @@
                     </div>
 
                     <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
-                        <h3 class="text-white font-bold text-base mb-4 flex items-center"><i class="fa-solid fa-users text-amber-500 mr-2"></i> Personal Registrado</h3>
+                        <h3 class="text-white font-bold text-base mb-4 flex items-center"><i class="fa-solid fa-users text-amber-500 mr-2"></i> Usuarios del Sistema</h3>
                         <div class="overflow-x-auto">
                             <table class="w-full text-left text-sm text-slate-300">
                                 <thead class="border-b border-slate-700 text-xs uppercase text-slate-400">
@@ -148,7 +160,7 @@
                                             <td class="py-3 px-2 uppercase text-xs font-bold text-slate-400">${u.rol}</td>
                                             <td class="py-3 px-2">${u.vehiculo || '-'}</td>
                                             <td class="py-3 px-2 text-right">
-                                                ${u.usuario !== 'admin' ? `<button onclick="deleteUser('${u.usuario}')" class="bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white px-3 py-1 rounded-lg text-xs font-semibold transition">🗑️ Eliminar</button>` : '<span class="text-xs text-slate-500">Sistema</span>'}
+                                                ${u.usuario !== 'admin' ? `<button onclick="deleteUser('${u.usuario}')" class="bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white px-3 py-1 rounded-lg text-xs font-semibold transition">Eliminar</button>` : '<span class="text-xs text-slate-500">Sistema</span>'}
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -171,13 +183,13 @@
                 };
                 users.push(newUser);
                 localStorage.setItem(USERS_KEY, JSON.stringify(users));
-                alert('Usuario registrado con éxito');
+                alert('Usuario guardado exitosamente');
                 renderAdmin();
             });
         }
 
         window.deleteUser = function(username) {
-            if (confirm('¿Estás seguro de eliminar este usuario?')) {
+            if (confirm('¿Eliminar este usuario?')) {
                 let users = JSON.parse(localStorage.getItem(USERS_KEY));
                 users = users.filter(u => u.usuario !== username);
                 localStorage.setItem(USERS_KEY, JSON.stringify(users));
@@ -197,69 +209,161 @@
                         <div class="bg-amber-500 text-slate-950 p-2 rounded-lg font-bold"><i class="fa-solid fa-route"></i></div>
                         <div>
                             <h2 class="text-white font-bold text-sm">Panel Supervisor</h2>
-                            <p class="text-xs text-slate-400">Asignación de Pedidos y Rutas</p>
+                            <p class="text-xs text-slate-400">Carga de Pedidos e Ítems</p>
                         </div>
                     </div>
-                    <button onclick="logout()" class="text-slate-400 hover:text-white text-sm font-medium"><i class="fa-solid fa-power-off mr-1">Salir</i></button>
+                    <button onclick="logout()" class="text-slate-400 hover:text-white text-sm font-medium"><i class="fa-solid fa-power-off mr-1"></i> Salir</button>
                 </header>
                 <main class="p-6 max-w-4xl mx-auto w-full space-y-6">
                     <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
-                        <h3 class="text-white font-bold text-base mb-4 flex items-center"><i class="fa-solid fa-file-circle-plus text-amber-500 mr-2"></i> Cargar y Asignar Pedido</h3>
-                        <form id="orderForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <h3 class="text-white font-bold text-base mb-4 flex items-center"><i class="fa-solid fa-cart-plus text-amber-500 mr-2"></i> Crear Pedido Nuevo</h3>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                             <input type="text" id="comercio" placeholder="Comercio / Cliente" required class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
                             <input type="text" id="direccion" placeholder="Dirección de Entrega" required class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
-                            <select id="choferAsignado" required class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
+                            <select id="choferAsignado" required class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white sm:col-span-2">
                                 <option value="">Seleccionar Chofer...</option>
                                 ${choferes.map(c => `<option value="${c.nombre}">${c.nombre} (${c.vehiculo})</option>`).join('')}
                             </select>
-                            <input type="text" id="producto" placeholder="Detalle de Productos / Items" required class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
-                            <input type="number" id="precio" placeholder="Precio Total ($)" required class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
-                            <button type="submit" class="sm:col-span-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition shadow-md">Despachar Pedido</button>
-                        </form>
+                        </div>
+
+                        <div class="bg-slate-900/60 border border-slate-700/80 rounded-xl p-4 mb-4">
+                            <h4 class="text-xs font-bold uppercase text-amber-400 mb-3"><i class="fa-solid fa-box-open mr-1"></i> Ítems del Pedido</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+                                <input type="text" id="prodNombre" placeholder="Producto" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
+                                <input type="number" id="prodCant" placeholder="Cantidad" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
+                                <input type="number" id="prodPrecio" placeholder="Precio Un. ($)" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
+                            </div>
+                            <button type="button" onclick="agregarProductoTemp()" class="w-full bg-slate-800 hover:bg-slate-700 text-amber-400 font-semibold py-2 rounded-lg text-xs border border-amber-500/30 transition">
+                                + Agregar Producto a la Lista
+                            </button>
+
+                            <div id="listaProdTemp" class="mt-4 space-y-1"></div>
+                            <div class="mt-3 pt-2 border-t border-slate-800 flex justify-between items-center text-sm font-bold text-white">
+                                <span>TOTAL CALCULADO:</span>
+                                <span id="totalCalculado" class="text-amber-400 text-base">$0</span>
+                            </div>
+                        </div>
+
+                        <button type="button" onclick="despacharPedido()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition shadow-md">
+                            Despachar Pedido al Chofer
+                        </button>
                     </div>
 
                     <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
-                        <h3 class="text-white font-bold text-base mb-4 flex items-center"><i class="fa-solid fa-clipboard-list text-amber-500 mr-2"></i> Estado de Envíos en Tiempo Real</h3>
+                        <h3 class="text-white font-bold text-base mb-4 flex items-center"><i class="fa-solid fa-clock-rotate-left text-amber-500 mr-2"></i> Historial de Envíos</h3>
                         <div class="space-y-3">
-                            ${orders.length === 0 ? '<p class="text-slate-500 text-sm text-center py-4">No hay pedidos asignados todavía.</p>' : orders.map(o => `
-                                <div class="bg-slate-900 border border-slate-700/60 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                                    <div>
-                                        <div class="flex items-center space-x-2">
-                                            <span class="text-white font-bold">${o.comercio}</span>
-                                            <span class="px-2 py-0.5 rounded text-xs font-bold ${o.estado === 'Entregado' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">${o.estado}</span>
-                                        </div>
-                                        <p class="text-xs text-slate-400 mt-1"><i class="fa-solid fa-location-dot mr-1"></i> ${o.direccion} | <i class="fa-solid fa-user mr-1"></i> ${o.chofer}</p>
-                                        <p class="text-xs text-slate-400 mt-0.5">📦 ${o.producto} - <strong>$${o.precio}</strong>${o.pago ? `(${o.pago})` : ''}</p>
-                                        ${o.fechaHora ? `<p class="text-xs text-emerald-400 mt-1 font-mono">🕒 Entregado el: ${o.fechaHora}</p>` : ''}
+                            ${orders.length === 0 ? '<p class="text-slate-500 text-sm text-center py-4">No hay envíos guardados.</p>' : orders.map(o => `
+                                <div class="bg-slate-900 border border-slate-700/60 rounded-xl p-4">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <div>
+                                            <span class="text-white font-bold text-base">${o.comercio}</span>
+                                            <span class="ml-2 px-2 py-0.5 rounded text-xs font-bold ${o.estado === 'Entregado' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">${o.estado}</span> </div> <span class="text-amber-400 font-bold text-base">$${o.total}</span>
                                     </div>
-                                    ${o.foto ? `<img src="${o.foto}" class="w-16 h-16 object-cover rounded-lg border border-slate-700"/>` : ''}
+                                    <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-location-dot mr-1"></i> ${o.direccion} | <i class="fa-solid fa-truck mr-1"></i> ${o.chofer}</p>
+                                    <div class="bg-slate-950/50 rounded-lg p-2 text-xs text-slate-300 space-y-1 mb-2">
+                                        ${o.items.map(i => `<div class="flex justify-between"><span>• ${i.nombre} (x${i.cant})</span><span class="text-slate-400">$${i.cant * i.precio}</span></div>`).join('')}
+                                    </div>
+                                    ${o.fechaHora ? `<p class="text-xs text-emerald-400 font-mono">🕒 Entregado: ${o.fechaHora} (${o.pago})</p>` : ''}
+                                    ${o.foto ? `<img src="${o.foto}" class="mt-2 w-20 h-20 object-cover rounded-lg border border-slate-700"/>` : ''}
                                 </div>
                             `).join('')}
                         </div>
                     </div>
                 </main>
             `;
-
-            document.getElementById('orderForm').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const newOrder = {
-                    id: Date.now(),
-                    comercio: document.getElementById('comercio').value,
-                    direccion: document.getElementById('direccion').value,
-                    chofer: document.getElementById('choferAsignado').value,
-                    producto: document.getElementById('producto').value,
-                    precio: document.getElementById('precio').value,
-                    estado: 'Pendiente',
-                    fechaHora: null,
-                    pago: null,
-                    foto: null
-                };
-                orders.push(newOrder);
-                localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-                alert('Pedido despachado con éxito');
-                renderSupervisor();
-            });
+            renderItemsTemp();
         }
+
+        window.agregarProductoTemp = function() {
+            const nombre = document.getElementById('prodNombre').value.trim();
+            const cant = parseFloat(document.getElementById('prodCant').value);
+            const precio = parseFloat(document.getElementById('prodPrecio').value);
+
+            if (!nombre || isNaN(cant) || isNaN(precio)) {
+                alert('Completá nombre, cantidad y precio unitario.');
+                return;
+            }
+
+            itemsTemp.push({ nombre, cant, precio });
+            document.getElementById('prodNombre').value = '';
+            document.getElementById('prodCant').value = '';
+            document.getElementById('prodPrecio').value = '';
+            renderItemsTemp();
+        };
+
+        function renderItemsTemp() {
+            const container = document.getElementById('listaProdTemp');
+            const totalEl = document.getElementById('totalCalculado');
+            if (!container) return;
+
+            if (itemsTemp.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-500 italic">No agregaste productos.</p>';
+                totalEl.innerText = '$0';
+                return;
+            }
+
+            let total = 0;
+            container.innerHTML = itemsTemp.map((item, idx) => {
+                const subtotal = item.cant * item.precio;
+                total += subtotal;
+                return `
+                    <div class="flex justify-between items-center text-xs bg-slate-800 px-3 py-1.5 rounded border border-slate-700">
+                        <span class="text-white">${item.nombre} x${item.cant} <span class="text-slate-400">($${item.precio}/u)</span></span>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-amber-400 font-bold">$${subtotal}</span>
+                            <button type="button" onclick="quitarProductoTemp(${idx})" class="text-red-400 hover:text-red-300 font-bold ml-2">✕</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            totalEl.innerText = `$${total}`;
+        }
+
+        window.quitarProductoTemp = function(idx) {
+            itemsTemp.splice(idx, 1);
+            renderItemsTemp();
+        };
+
+        window.despacharPedido = function() {
+            const comercio = document.getElementById('comercio').value.trim();
+            const direccion = document.getElementById('direccion').value.trim();
+            const chofer = document.getElementById('choferAsignado').value;
+
+            if (!comercio || !direccion || !chofer) {
+                alert('Completá comercio, dirección y chofer.');
+                return;
+            }
+
+            if (itemsTemp.length === 0) {
+                alert('Agregá al menos un producto.');
+                return;
+            }
+
+            const total = itemsTemp.reduce((acc, item) => acc + (item.cant * item.precio), 0);
+
+            const orders = JSON.parse(localStorage.getItem(ORDERS_KEY));
+            const newOrder = {
+                id: Date.now(),
+                comercio,
+                direccion,
+                chofer,
+                items: [...itemsTemp],
+                total,
+                estado: 'Pendiente',
+                fechaHora: null,
+                pago: null,
+                foto: null
+            };
+
+            orders.push(newOrder);
+            localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
+
+            itemsTemp = [];
+            alert('¡Pedido despachado con éxito!');
+            renderSupervisor();
+        };
 
         function renderChofer() {
             const session = getSession();
@@ -272,21 +376,26 @@
                     <div class="flex items-center space-x-3">
                         <div class="bg-amber-500 text-slate-950 p-2 rounded-lg font-bold"><i class="fa-solid fa-truck"></i></div>
                         <div>
-                            <h2 class="text-white font-bold text-sm">App Chofer: ${session.nombre}</h2>
-                            <p class="text-xs text-slate-400">Vehículo: ${session.vehiculo}</p>
+                            <h2 class="text-white font-bold text-sm">Chofer: ${session.nombre}</h2>
+                            <p class="text-xs text-slate-400">${session.vehiculo}</p>
                         </div>
                     </div>
-                    <button onclick="logout()" class="text-slate-400 hover:text-white text-sm font-medium"><i class="fa-solid fa-power-off mr-1">Salir</i></button>
+                    <button onclick="logout()" class="text-slate-400 hover:text-white text-sm font-medium"><i class="fa-solid fa-power-off mr-1"></i> Salir</button>
                 </header>
                 <main class="p-6 max-w-md mx-auto w-full space-y-4">
-                    <h3 class="text-white font-bold text-base mb-2">Mis Entregas Pendientes</h3>
-                    ${misPedidos.length === 0 ? '<div class="bg-slate-800 p-6 rounded-2xl text-center text-slate-400 text-sm">No tenés pedidos asignados en este momento.</div>' : misPedidos.map(o => `
+                    <h3 class="text-white font-bold text-base mb-2">Entregas Pendientes</h3>
+                    ${misPedidos.length === 0 ? '<div class="bg-slate-800 p-6 rounded-2xl text-center text-slate-400 text-sm">No tenés pedidos pendientes.</div>' : misPedidos.map(o => `
                         <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 space-y-3 shadow-lg">
                             <div class="flex justify-between items-start">
-                                <h4 class="text-white font-bold text-base">${o.comercio}</h4> <span class="text-amber-400 font-bold text-sm">$${o.precio}</span>
+                                <h4 class="text-white font-bold text-base">${o.comercio}</h4> <span class="text-amber-400 font-bold text-lg">$${o.total}</span>
                             </div>
                             <p class="text-xs text-slate-300"><i class="fa-solid fa-location-dot text-amber-500 mr-1"></i> ${o.direccion}</p>
-                            <p class="text-xs text-slate-400">📦 ${o.producto}</p>
+                            
+                            <div class="bg-slate-900/80 rounded-xl p-3 text-xs text-slate-300 space-y-1">
+                                <p class="font-bold text-amber-400 uppercase text-micro mb-1">Productos:</p>
+                                ${o.items.map(i => `<div class="flex justify-between"><span>• ${i.nombre} (x${i.cant})</span><span>$${i.cant * i.precio}</span></div>`).join('')}
+                            </div>
+
                             <div class="pt-2 border-t border-slate-700 space-y-3">
                                 <div>
                                     <label class="block text-xs text-slate-400 mb-1">Método de Cobro</label>
@@ -296,7 +405,7 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="block text-xs text-slate-400 mb-1">Foto Comprobante / Entrega</label>
+                                    <label class="block text-xs text-slate-400 mb-1">Foto Comprobante</label>
                                     <input type="file" accept="image/*" id="foto_${o.id}" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400">
                                 </div>
                                 <button onclick="entregarPedido(${o.id})" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition shadow-md">
@@ -329,13 +438,13 @@
                     reader.onload = function(e) {
                         orders[orderIndex].foto = e.target.result;
                         localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-                        alert('¡Entrega registrada con éxito a las ' + fechaHoraExacta + '!');
+                        alert('¡Entrega registrada con éxito!');
                         renderChofer();
                     };
                     reader.readAsDataURL(fotoInput.files[0]);
                 } else {
                     localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
-                    alert('¡Entrega registrada con éxito a las ' + fechaHoraExacta + '!');
+                    alert('¡Entrega registrada con éxito!');
                     renderChofer();
                 }
             }
