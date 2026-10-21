@@ -3,523 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arcor Logistics Go - En Vivo</title>
+    <title>Arcor Logistics Go - Supabase</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
-    <!-- Firebase App & Firestore SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
-    <div id="app" class="flex-grow flex flex-col">
-        <div class="flex items-center justify-center flex-grow p-6">
-            <div class="bg-slate-800 p-8 rounded-2xl shadow-xl max-w-md w-full border border-slate-700 text-center">
-                <div class="bg-amber-500 w-16 h-16 mx-auto rounded-full flex items-center justify-center text-slate-900 text-2xl font-bold mb-4 animate-bounce">
-                    <i class="fa-solid fa-cloud-arrow-up"></i>
-                </div>
-                <h1 class="text-2xl font-bold text-white mb-2">Arcor Logistics Go</h1>
-                <p class="text-slate-400 text-sm mb-6">Sincronizando con la Nube...</p>
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto"></div>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+    <div id="app" class="flex flex-col p-4 max-w-md mx-auto min-h-screen">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-6 bg-slate-800 p-4 rounded-2xl shadow-lg border border-slate-700">
+            <div>
+                <h1 class="text-xl font-bold text-white">Arcor Logistics</h1>
+                <p class="text-xs text-amber-400 font-medium">Sincronización en Vivo</p>
+            </div>
+            <div id="user-role-badge" class="bg-slate-700 px-3 py-1 rounded-full text-xs font-semibold text-slate-300">
+                Seleccionando Rol...
+            </div>
+        </header>
+
+        <!-- Selector de Rol (Inicial) -->
+        <div id="role-selector" class="my-auto bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700 text-center">
+            <h2 class="text-lg font-bold mb-4 text-white">¿Cómo deseas ingresar?</h2>
+            <div class="space-y-3">
+                <button onclick="setRole('supervisor')" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold p-3 rounded-xl transition shadow-lg">
+                    <i class="fa-solid fa-user-tie mr-2"></i> Supervisor
+                </button>
+                <button onclick="setRole('chofer')" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold p-3 rounded-xl transition shadow-lg">
+                    <i class="fa-solid fa-truck-fast mr-2"></i> Chofer
+                </button>
+            </div>
+        </div>
+
+        <!-- Panel de Supervisor -->
+        <div id="supervisor-panel" class="hidden flex-col space-y-4">
+            <div class="bg-slate-800 p-4 rounded-2xl shadow-lg border border-slate-700">
+                <h2 class="text-md font-bold mb-3 text-white"><i class="fa-solid fa-plus-circle mr-2 text-amber-500"></i>Nuevo Pedido</h2>
+                <form id="order-form" onsubmit="crearPedido(event)" class="space-y-3">
+                    <input type="text" id="cliente" placeholder="Nombre del Cliente" required class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                    <input type="text" id="direccion" placeholder="Dirección de Entrega" required class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                    <input type="text" id="chofer" placeholder="Chofer Asignado" required class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-sm text-white focus:outline-none focus:border-amber-500">
+                    <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold p-3 rounded-xl text-sm transition">
+                        Registrar y Enviar
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Lista de Pedidos (Común para ambos) -->
+        <div id="main-content" class="hidden flex-col flex-grow space-y-4 mt-2">
+            <div class="flex justify-between items-center">
+                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Lista de Pedidos</h3>
+                <button onclick="cambiarRol()" class="text-xs text-amber-400 underline">Cambiar de Rol</button>
+            </div>
+            <div id="pedidos-list" class="space-y-3 pb-6">
+                <!-- Los pedidos se cargan aquí dinámicamente -->
+                <p class="text-center text-slate-500 text-sm py-6">Cargando pedidos...</p>
             </div>
         </div>
     </div>
 
     <script>
-        // CONFIGURACIÓN DE FIREBASE
-        const firebaseConfig = {
-            apiKey: "AIzaSyColQ26c1YbOEMFICGGkLwSB5...",
-            authDomain: "arcorlogistic-dfe6f.firebaseapp.com",
-            projectId: "arcorlogistic-dfe6f",
-            storageBucket: "arcorlogistic-dfe6f.appspot.com",
-            messagingSenderId: "70039945377",
-            appId: "1:70039945377:web:c3ccbdac38dcecd6b8b0e0",
-            measurementId: "G-F94YB45ZQW"
-        };
+        // Configuración de Supabase
+        const SUPABASE_URL = 'https://uxaibhplafdnifwizjec.supabase.co';
+        const SUPABASE_ANON_KEY = 'PEGAR_AQUI_TU_CLAVE_SB_PUBL'; const SUPABASE_ANON_KEY = 'sb_publ_tu_clave_larga_aqui...';
 
-        // Inicializar Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        const SESSION_KEY = 'arcor_session_v7';
-        let itemsTemp = [];
+        let currentRole = null;
 
-        function getSession() {
-            const s = localStorage.getItem(SESSION_KEY);
-            return s ? JSON.parse(s) : null;
-        }
-
-        function renderLogin() {
-            const app = document.getElementById('app');
-            app.innerHTML = `
-                <div class="flex-grow flex items-center justify-center p-4 bg-slate-950">
-                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-sm w-full shadow-2xl">
-                        <div class="text-center mb-8">
-                            <div class="bg-amber-500 w-14 h-14 mx-auto rounded-xl flex items-center justify-center text-slate-950 text-2xl font-black mb-3 shadow-lg shadow-amber-500/20">
-                                <i class="fa-solid fa-box"></i>
-                            </div>
-                            <h1 class="text-xl font-bold text-white tracking-wide">ARCOR LOGISTICS</h1>
-                            <p class="text-xs text-amber-400 font-semibold mt-1">Sincronización en Tiempo Real</p>
-                        </div>
-                        <form id="loginForm" class="space-y-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Usuario</label>
-                                <input type="text" id="user" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-500 transition">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-400 uppercase mb-1">Contraseña</label>
-                                <input type="password" id="pass" required class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-amber-500 transition">
-                            </div>
-                            <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition shadow-lg shadow-amber-500/10 mt-2">
-                                Ingresar al Sistema
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            `;
-
-            document.getElementById('loginForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const u = document.getElementById('user').value.trim();
-                const p = document.getElementById('pass').value.trim();
-
-                try {
-                    const snapshot = await db.collection('usuarios').where('usuario', '==', u).get();
-                    if (!snapshot.empty) {
-                        const found = snapshot.docs[0].data();
-                        if (found.pass === p) {
-                            localStorage.setItem(SESSION_KEY, JSON.stringify(found));
-                            router();
-                            return;
-                        }
-                    }
-                } catch (err) {
-                    console.log('Modo fallback local:', err);
-                }
-                
-                if (u === 'admin' && p === 'Arcor2026!') {
-                    const adm = { legajo: 'ADM001', nombre: 'Administrador General', rol: 'admin', usuario: 'admin', pass: 'Arcor2026!', vehiculo: 'Sistema' };
-                    localStorage.setItem(SESSION_KEY, JSON.stringify(adm));
-                    router();
-                } else if (u === 'carlos' && p === '1234') {
-                    const sup = { legajo: 'SUP001', nombre: 'Carlos Supervisor', rol: 'supervisor', usuario: 'carlos', pass: '1234', vehiculo: 'Oficina Central' };
-                    localStorage.setItem(SESSION_KEY, JSON.stringify(sup));
-                    router();
-                } else if (u === 'juan' && p === '1234') {
-                    const cho = { legajo: 'CHO001', nombre: 'Juan Chofer', rol: 'chofer', usuario: 'juan', pass: '1234', vehiculo: 'IVECO AA-123-BB' };
-                    localStorage.setItem(SESSION_KEY, JSON.stringify(cho));
-                    router();
-                } else {
-                    alert('Usuario o contraseña incorrectos.');
-                }
-            });
-        }
-
-        async function renderAdmin() {
-            let users = [];
-            try {
-                const snapshot = await db.collection('usuarios').get();
-                users = snapshot.docs.map(doc => doc.data());
-            } catch(e){}
-
-            if(users.length === 0) {
-                users = [
-                    { legajo: 'ADM001', nombre: 'Administrador General', rol: 'admin', usuario: 'admin', pass: 'Arcor2026!', vehiculo: 'Sistema' },
-                    { legajo: 'SUP001', nombre: 'Carlos Supervisor', rol: 'supervisor', usuario: 'carlos', pass: '1234', vehiculo: 'Oficina Central' },
-                    { legajo: 'CHO001', nombre: 'Juan Chofer', rol: 'chofer', usuario: 'juan', pass: '1234', vehiculo: 'IVECO AA-123-BB' }
-                ];
-                for(let u of users) { 
-                    try { await db.collection('usuarios').doc(u.usuario).set(u); } catch(err){}
-                }
-            }
-
-            const app = document.getElementById('app');
-            app.innerHTML = `
-                <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center">
-                    <div class="flex items-center space-x-3">
-                        <div class="bg-amber-500 text-slate-950 p-2 rounded-lg font-bold"><i class="fa-solid fa-shield-halved"></i></div>
-                        <div>
-                            <h2 class="text-white font-bold text-sm">Panel Administrador</h2>
-                            <p class="text-xs text-slate-400">Personal en la Nube</p>
-                        </div>
-                    </div>
-                    <button onclick="logout()" class="text-slate-400 hover:text-white text-sm font-medium"><i class="fa-solid fa-power-off mr-1"></i> Salir</button>
-                </header>
-                <main class="p-6 max-w-4xl mx-auto w-full space-y-6">
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
-                        <h3 class="text-white font-bold text-base mb-4 flex items-center"><i class="fa-solid fa-user-plus text-amber-500 mr-2"></i> Registrar Nuevo Personal</h3>
-                        <form id="addUserForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <input type="text" id="legajo" placeholder="Legajo (ej: CHO002)" required class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
-                            <input type="text" id="nombre" placeholder="Nombre y Apellido" required class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
-                            <select id="rol" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
-                                <option value="chofer">Chofer</option>
-                                <option value="supervisor">Supervisor</option>
-                                <option value="admin">Administrador</option>
-                            </select>
-                            <input type="text" id="vehiculo" placeholder="Vehículo / Patente" class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
-                            <input type="text" id="newuser" placeholder="Usuario de acceso" required class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
-                            <input type="password" id="newpass" placeholder="Contraseña" required class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
-                            <button type="submit" class="sm:col-span-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition shadow-md">Guardar Personal</button>
-                        </form>
-                    </div>
-
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
-                        <h3 class="text-white font-bold text-base mb-4 flex items-center"><i class="fa-solid fa-users text-amber-500 mr-2"></i> Personal Registrado</h3>
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-sm text-slate-300">
-                                <thead class="border-b border-slate-700 text-xs uppercase text-slate-400">
-                                    <tr>
-                                        <th class="py-3 px-2">Legajo</th>
-                                        <th class="py-3 px-2">Nombre</th>
-                                        <th class="py-3 px-2">Rol</th>
-                                        <th class="py-3 px-2">Vehículo</th>
-                                        <th class="py-3 px-2 text-right">Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-700/50">
-                                    ${users.map(u => `
-                                        <tr>
-                                            <td class="py-3 px-2 font-mono text-amber-400">${u.legajo}</td>
-                                            <td class="py-3 px-2 text-white font-medium">${u.nombre}</td>
-                                            <td class="py-3 px-2 uppercase text-xs font-bold text-slate-400">${u.rol}</td>
-                                            <td class="py-3 px-2">${u.vehiculo || '-'}</td>
-                                            <td class="py-3 px-2 text-right">
-                                                ${u.usuario !== 'admin' ? `<button onclick="deleteUser('${u.usuario}')" class="bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white px-3 py-1 rounded-lg text-xs font-semibold transition">Eliminar</button>` : '<span class="text-xs text-slate-500">Sistema</span>'}
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </main>
-            `;
-
-            document.getElementById('addUserForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const newUser = {
-                    legajo: document.getElementById('legajo').value,
-                    nombre: document.getElementById('nombre').value,
-                    rol: document.getElementById('rol').value,
-                    vehiculo: document.getElementById('vehiculo').value,
-                    usuario: document.getElementById('newuser').value,
-                    pass: document.getElementById('newpass').value
-                };
-                await db.collection('usuarios').doc(newUser.usuario).set(newUser);
-                alert('Usuario guardado exitosamente');
-                renderAdmin();
-            });
-        }
-
-        window.deleteUser = async function(username) {
-            if (confirm('¿Eliminar usuario?')) {
-                await db.collection('usuarios').doc(username).delete();
-                renderAdmin();
-            }
-        };
-
-        async function renderSupervisor() {
-            let choferes = [];
-            try {
-                const usersSnap = await db.collection('usuarios').get();
-                const users = usersSnap.docs.map(d => d.data());
-                choferes = users.filter(u => u.rol === 'chofer');
-            } catch(e){}
-
-            if(choferes.length === 0) {
-                choferes = [{ nombre: 'Juan Chofer', vehiculo: 'IVECO AA-123-BB' }];
-            }
-
-            const app = document.getElementById('app');
-            app.innerHTML = `
-                <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center">
-                    <div class="flex items-center space-x-3">
-                        <div class="bg-amber-500 text-slate-950 p-2 rounded-lg font-bold"><i class="fa-solid fa-route"></i></div>
-                        <div>
-                            <h2 class="text-white font-bold text-sm">Panel Supervisor</h2>
-                            <p class="text-xs text-slate-400">Despacho en Tiempo Real</p>
-                        </div>
-                    </div>
-                    <button onclick="logout()" class="text-slate-400 hover:text-white text-sm font-medium"><i class="fa-solid fa-power-off mr-1"></i> Salir</button>
-                </header>
-                <main class="p-6 max-w-4xl mx-auto w-full space-y-6">
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
-                        <h3 class="text-white font-bold text-base mb-4 flex items-center"><i class="fa-solid fa-cart-plus text-amber-500 mr-2"></i> Crear Pedido Detallado</h3>
-                        
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                            <input type="text" id="comercio" placeholder="Comercio / Cliente" required class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
-                            <input type="text" id="direccion" placeholder="Dirección de Entrega" required class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white">
-                            <select id="choferAsignado" required class="bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white sm:col-span-2">
-                                <option value="">Seleccionar Chofer...</option>
-                                ${choferes.map(c => `<option value="${c.nombre}">${c.nombre} (${c.vehiculo})</option>`).join('')}
-                            </select>
-                        </div>
-
-                        <div class="bg-slate-900/60 border border-slate-700/80 rounded-xl p-4 mb-4">
-                            <h4 class="text-xs font-bold uppercase text-amber-400 mb-3"><i class="fa-solid fa-box-open mr-1"></i> Ítems del Pedido</h4>
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
-                                <input type="text" id="prodNombre" placeholder="Producto" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
-                                <input type="number" id="prodCant" placeholder="Cantidad" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
-                                <input type="number" id="prodPrecio" placeholder="Precio Un. ($)" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white">
-                            </div>
-                            <button type="button" onclick="agregarProductoTemp()" class="w-full bg-slate-800 hover:bg-slate-700 text-amber-400 font-semibold py-2 rounded-lg text-xs border border-amber-500/30 transition">
-                                + Agregar Producto a la Lista
-                            </button>
-
-                            <div id="listaProdTemp" class="mt-4 space-y-1"></div>
-                            <div class="mt-3 pt-2 border-t border-slate-800 flex justify-between items-center text-sm font-bold text-white">
-                                <span>TOTAL CALCULADO:</span>
-                                <span id="totalCalculado" class="text-amber-400 text-base">$0</span>
-                            </div>
-                        </div>
-
-                        <button type="button" onclick="despacharPedido()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl transition shadow-md">
-                            Despachar Pedido a la Nube
-                        </button>
-                    </div>
-
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
-                        <h3 class="text-white font-bold text-base mb-4 flex items-center"><i class="fa-solid fa-clock-rotate-left text-amber-500 mr-2"></i> Envíos Despachados</h3>
-                        <div id="listaPedidosSupervisor" class="space-y-3">
-                            <p class="text-slate-500 text-sm text-center py-4">Buscando envíos...</p>
-                        </div>
-                    </div>
-                </main>
-            `;
-            renderItemsTemp();
-
-            db.collection('pedidos').onSnapshot(snapshot => {
-                const orders = snapshot.docs.map(doc => ({ idDoc: doc.id, ...doc.data() }));
-                const container = document.getElementById('listaPedidosSupervisor');
-                if (!container) return;
-
-                if (orders.length === 0) {
-                    container.innerHTML = '<p class="text-slate-500 text-sm text-center py-4">No hay pedidos asignados todavía.</p>';
-                    return;
-                }
-
-                container.innerHTML = orders.map(o => `
-                    <div class="bg-slate-900 border border-slate-700/60 rounded-xl p-4">
-                        <div class="flex justify-between items-start mb-2">
-                            <div>
-                                <span class="text-white font-bold text-base">${o.comercio}</span>
-                                <span class="ml-2 px-2 py-0.5 rounded text-xs font-bold ${o.estado === 'Entregado' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">${o.estado}</span>
-                            </div>
-                            <span class="text-amber-400 font-bold text-base">$${o.total}</span>
-                        </div>
-                        <p class="text-xs text-slate-400 mb-2"><i class="fa-solid fa-location-dot mr-1"></i> ${o.direccion} | <i class="fa-solid fa-truck mr-1"></i> ${o.chofer}</p>
-                        <div class="bg-slate-950/50 rounded-lg p-2 text-xs text-slate-300 space-y-1 mb-2">
-                            ${o.items ? o.items.map(i => `<div class="flex justify-between"><span>• ${i.nombre} (x${i.cant})</span><span class="text-slate-400">$${i.cant * i.precio}</span></div>`).join('') : ''}
-                        </div>
-                        ${o.fechaHora ? `<p class="text-xs text-emerald-400 font-mono">🕒 Entregado: ${o.fechaHora} (${o.pago})</p>` : ''}
-                        ${o.foto ? `<img src="${o.foto}" class="mt-2 w-20 h-20 object-cover rounded-lg border border-slate-700"/>` : ''}
-                    </div>
-                `).join('');
-            });
-        }
-
-        window.agregarProductoTemp = function() {
-            const nombre = document.getElementById('prodNombre').value.trim();
-            const cant = parseFloat(document.getElementById('prodCant').value);
-            const precio = parseFloat(document.getElementById('prodPrecio').value);
-
-            if (!nombre || isNaN(cant) || isNaN(precio)) {
-                alert('Completá nombre, cantidad y precio.');
-                return;
-            }
-
-            itemsTemp.push({ nombre, cant, precio });
-            document.getElementById('prodNombre').value = '';
-            document.getElementById('prodCant').value = '';
-            document.getElementById('prodPrecio').value = '';
-            renderItemsTemp();
-        };
-
-        function renderItemsTemp() {
-            const container = document.getElementById('listaProdTemp');
-            const totalEl = document.getElementById('totalCalculado');
-            if (!container) return;
-
-            if (itemsTemp.length === 0) {
-                container.innerHTML = '<p class="text-xs text-slate-500 italic">No hay productos agregados.</p>';
-                totalEl.innerText = '$0';
-                return;
-            }
-
-            let total = 0;
-            container.innerHTML = itemsTemp.map((item, idx) => {
-                const subtotal = item.cant * item.precio;
-                total += subtotal;
-                return `
-                    <div class="flex justify-between items-center text-xs bg-slate-800 px-3 py-1.5 rounded border border-slate-700">
-                        <span class="text-white">${item.nombre} x${item.cant} <span class="text-slate-400">($${item.precio}/u)</span></span>
-                        <div class="flex items-center space-x-2">
-                            <span class="text-amber-400 font-bold">$${subtotal}</span>
-                            <button type="button" onclick="quitarProductoTemp(${idx})" class="text-red-400 font-bold ml-2">✕</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            totalEl.innerText = `$${total}`;
-        }
-
-        window.quitarProductoTemp = function(idx) {
-            itemsTemp.splice(idx, 1);
-            renderItemsTemp();
-        };
-
-        window.despacharPedido = async function() {
-            const comercio = document.getElementById('comercio').value.trim();
-            const direccion = document.getElementById('direccion').value.trim();
-            const chofer = document.getElementById('choferAsignado').value;
-
-            if (!comercio || !direccion || !chofer) {
-                alert('Completá comercio, dirección y chofer.');
-                return;
-            }
-            if (itemsTemp.length === 0) {
-                alert('Agregá al menos un producto.');
-                return;
-            }
-
-            const total = itemsTemp.reduce((acc, item) => acc + (item.cant * item.precio), 0);
-            const orderId = 'ord_' + Date.now();
-
-            const newOrder = {
-                id: orderId,
-                comercio,
-                direccion,
-                chofer,
-                items: [...itemsTemp],
-                total,
-                estado: 'Pendiente',
-                fechaHora: null,
-                pago: null,
-                foto: null
-            };
-
-            await db.collection('pedidos').doc(orderId).set(newOrder);
-            itemsTemp = [];
-            alert('¡Pedido despachado a la nube con éxito!');
-            renderSupervisor();
-        };
-
-        function renderChofer() {
-            const session = getSession();
-            const app = document.getElementById('app');
-
-            app.innerHTML = `
-                <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center">
-                    <div class="flex items-center space-x-3">
-                        <div class="bg-amber-500 text-slate-950 p-2 rounded-lg font-bold"><i class="fa-solid fa-truck"></i></div>
-                        <div>
-                            <h2 class="text-white font-bold text-sm">Chofer: ${session.nombre}</h2>
-                            <p class="text-xs text-slate-400">${session.vehiculo}</p>
-                        </div>
-                    </div>
-                    <button onclick="logout()" class="text-slate-400 hover:text-white text-sm font-medium"><i class="fa-solid fa-power-off mr-1"></i> Salir</button>
-                </header>
-                <main class="p-6 max-w-md mx-auto w-full space-y-4">
-                    <h3 class="text-white font-bold text-base mb-2">Entregas Pendientes (En Vivo)</h3>
-                    <div id="listaPedidosChofer" class="space-y-4">
-                        <p class="text-slate-500 text-sm text-center py-4">Buscando entregas asignadas...</p>
-                    </div>
-                </main>
-            `;
-
-            db.collection('pedidos').where('chofer', '==', session.nombre).where('estado', '==', 'Pendiente').onSnapshot(snapshot => {
-                const orders = snapshot.docs.map(doc => ({ idDoc: doc.id, ...doc.data() }));
-                const container = document.getElementById('listaPedidosChofer');
-                if (!container) return;
-
-                if (orders.length === 0) {
-                    container.innerHTML = '<div class="bg-slate-800 p-6 rounded-2xl text-center text-slate-400 text-sm">No tenés pedidos pendientes.</div>';
-                    return;
-                }
-
-                container.innerHTML = orders.map(o => `
-                    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 space-y-3 shadow-lg">
-                        <div class="flex justify-between items-start">
-                            <h4 class="text-white font-bold text-base">${o.comercio}</h4>
-                            <span class="text-amber-400 font-bold text-lg">$${o.total}</span>
-                        </div>
-                        <p class="text-xs text-slate-300"><i class="fa-solid fa-location-dot text-amber-500 mr-1"></i> ${o.direccion}</p>
-                        
-                        <div class="bg-slate-900/80 rounded-xl p-3 text-xs text-slate-300 space-y-1">
-                            <p class="font-bold text-amber-400 uppercase mb-1">Productos:</p>
-                            ${o.items ? o.items.map(i => `<div class="flex justify-between"><span>• ${i.nombre} (x${i.cant})</span><span>$${i.cant * i.precio}</span></div>`).join('') : ''}
-                        </div>
-
-                        <div class="pt-2 border-t border-slate-700 space-y-3">
-                            <div>
-                                <label class="block text-xs text-slate-400 mb-1">Método de Cobro</label>
-                                <select id="pago_${o.id}" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white">
-                                    <option value="Efectivo">💵 Efectivo</option>
-                                    <option value="Transferencia">📲 Transferencia</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-xs text-slate-400 mb-1">Foto Comprobante</label>
-                                <input type="file" accept="image/*" id="foto_${o.id}" class="w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-500 file:text-slate-950 hover:file:bg-amber-400">
-                            </div>
-                            <button onclick="entregarPedido('${o.idDoc}', '${o.id}')" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl text-sm transition shadow-md">
-                                Confirmar Entrega
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-            });
-        }
-
-        window.entregarPedido = async function(idDoc, idOrden) {
-            const pagoVal = document.getElementById(`pago_${idOrden}`).value;
-            const fotoInput = document.getElementById(`foto_${idOrden}`);
+        function setRole(role) {
+            currentRole = role;
+            document.getElementById('role-selector').classList.add('hidden');
+            document.getElementById('main-content').classList.remove('hidden');
             
-            const now = new Date();
-            const fechaHoraExacta = now.toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'medium' });
-
-            let updateData = {
-                estado: 'Entregado',
-                pago: pagoVal,
-                fechaHora: fechaHoraExacta
-            };
-
-            if (fotoInput.files && fotoInput.files[0]) {
-                const reader = new FileReader();
-                reader.onload = async function(e) {
-                    updateData.foto = e.target.result;
-                    await db.collection('pedidos').doc(idDoc).update(updateData);
-                    alert('¡Entrega confirmada y sincronizada!');
-                };
-                reader.readAsDataURL(fotoInput.files[0]);
+            const badge = document.getElementById('user-role-badge');
+            if (role === 'supervisor') {
+                document.getElementById('supervisor-panel').classList.remove('hidden');
+                badge.textContent = 'Supervisor';
+                badge.className = 'bg-amber-500/20 text-amber-400 border border-amber-500/30 px-3 py-1 rounded-full text-xs font-semibold';
             } else {
-                await db.collection('pedidos').doc(idDoc).update(updateData);
-                alert('¡Entrega confirmada y sincronizada!');
+                document.getElementById('supervisor-panel').classList.add('hidden');
+                badge.textContent = 'Chofer';
+                badge.className = 'bg-blue-500/20 text-blue-400 border border-blue-500/30 px-3 py-1 rounded-full text-xs font-semibold';
             }
-        };
-
-        window.logout = function() {
-            localStorage.removeItem(SESSION_KEY);
-            router();
+            cargarPedidos();
+            suscripcionRealtime();
         }
 
-        function router() {
-            const session = getSession();
-            if (!session) {
-                renderLogin();
-            } else if (session.rol === 'admin') {
-                renderAdmin();
-            } else if (session.rol === 'supervisor') {
-                renderSupervisor();
-            } else if (session.rol === 'chofer') {
-                renderChofer();
+        function cambiarRol() {
+            currentRole = null;
+            document.getElementById('role-selector').classList.remove('hidden');
+            document.getElementById('main-content').classList.add('hidden');
+            document.getElementById('supervisor-panel').classList.add('hidden');
+            document.getElementById('user-role-badge').textContent = 'Seleccionando Rol...';
+            document.getElementById('user-role-badge').className = 'bg-slate-700 px-3 py-1 rounded-full text-xs font-semibold text-slate-300';
+        }
+
+        // Crear pedido (Supervisor)
+        async function crearPedido(e) {
+            e.preventDefault();
+            const cliente = document.getElementById('cliente').value;
+            const direccion = document.getElementById('direccion').value;
+            const chofer = document.getElementById('chofer').value;
+
+            const { data, error } = await _supabase
+                .from('pedidos')
+                .insert([{ cliente, direccion, chofer, estado: 'pendiente' }]);
+
+            if (error) {
+                alert('Error al crear pedido: ' + error.message);
+            } else {
+                document.getElementById('order-form').reset();
             }
         }
 
-        router();
+        // Cargar pedidos desde Supabase
+        async function cargarPedidos() {
+            const { data, error } = await _supabase
+                .from('pedidos')
+                .select('*')
+                .order('id', { ascending: false });
+
+            if (error) {
+                console.error('Error cargando pedidos:', error);
+                return;
+            }
+            renderizarPedidos(data);
+        }
+
+        // Renderizar en pantalla
+        function renderizarPedidos(pedidos) {
+            const container = document.getElementById('pedidos-list');
+            if (!pedidos || pedidos.length === 0) {
+                container.innerHTML = '<p class="text-center text-slate-500 text-sm py-6">No hay pedidos registrados.</p>';
+                return;
+            }
+
+            container.innerHTML = pedidos.map(p => `
+                <div class="bg-slate-800 p-4 rounded-2xl shadow-lg border border-slate-700 flex flex-col space-y-2">
+                    <div class="flex justify-between items-start">
+                        <h4 class="font-bold text-white text-base">${p.cliente}</h4>
+                        <span class="text-xs px-2.5 py-1 rounded-full font-semibold ${p.estado === 'entregado' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}">
+                            ${p.estado.toUpperCase()}
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400"><i class="fa-solid fa-location-dot mr-1"></i> ${p.direccion}</p>
+                    <p class="text-xs text-slate-300"><i class="fa-solid fa-user mr-1"></i> Chofer: <span class="font-medium text-white">${p.chofer}</span></p>
+                    ${currentRole === 'chofer' && p.estado !== 'entregado' ? `
+                        <button onclick="marcarEntregado(${p.id})" class="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-2 px-4 rounded-xl transition">
+                            Marcar como Entregado
+                        </button>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        // Actualizar estado (Chofer)
+        async function marcarEntregado(id) {
+            const { error } = await _supabase
+                .from('pedidos')
+                .update({ estado: 'entregado' })
+                .eq('id', id);
+
+            if (error) {
+                alert('Error al actualizar: ' + error.message);
+            }
+        }
+
+        // Sincronización en Tiempo Real (Realtime)
+        function suscripcionRealtime() {
+            _supabase
+                .channel('public:pedidos')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, payload => {
+                    cargarPedidos();
+                })
+                .subscribe();
+        }
     </script>
 </body>
 </html>
