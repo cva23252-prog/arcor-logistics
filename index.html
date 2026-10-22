@@ -437,15 +437,31 @@
                     </div>
                     <button onclick="logout()" class="text-slate-400 hover:text-white text-sm font-medium"><i class="fa-solid fa-power-off mr-1"></i> Salir</button>
                 </header>
-                <main class="p-6 max-w-4xl mx-auto w-full space-y-4">
-                    <h3 class="text-white font-bold text-base mb-2">Entregas Pendientes (En Vivo)</h3>
-                    <div id="listaPedidosChofer" class="space-y-4">
-                        <p class="text-slate-500 text-sm text-center py-4">Buscando entregas asignadas...</p>
+                <main class="p-6 max-w-4xl mx-auto w-full space-y-6">
+                    <div>
+                        <h3 class="text-white font-bold text-base mb-2">Entregas Pendientes (En Vivo)</h3>
+                        <div id="listaPedidosChofer" class="space-y-4">
+                            <p class="text-slate-500 text-sm text-center py-4">Buscando entregas asignadas...</p>
+                        </div>
+                    </div>
+
+                    <!-- SECCIÓN NUEVA: HISTORIAL DE ENTREGAS DEL DÍA -->
+                    <div class="pt-4 border-t border-slate-800">
+                        <div class="flex justify-between items-center mb-3">
+                            <h3 class="text-white font-bold text-base flex items-center">
+                                <i class="fa-solid fa-check-circle text-emerald-400 mr-2"></i> Historial de Entregas del Día
+                            </h3>
+                            <span id="contadorEntregados" class="bg-emerald-500/20 text-emerald-400 text-xs font-bold px-2.5 py-1 rounded-full">0 completadas</span>
+                        </div>
+                        <div id="listaHistorialChofer" class="space-y-3">
+                            <p class="text-slate-500 text-sm text-center py-4">No hay entregas registradas hoy.</p>
+                        </div>
                     </div>
                 </main>
             `;
 
             cargarPedidosChofer(session.nombre);
+            cargarHistorialChofer(session.nombre);
             suscripcionRealtimeChofer(session.nombre);
         }
 
@@ -497,16 +513,54 @@
             `).join('');
         }
 
+        async function cargarHistorialChofer(nombreChofer) {
+            const container = document.getElementById('listaHistorialChofer');
+            const contador = document.getElementById('contadorEntregados');
+            if (!container) return;
+
+            const { data: orders, error } = await _supabase
+                .from('pedidos')
+                .select('*')
+                .eq('chofer', nombreChofer)
+                .eq('estado', 'Entregado')
+                .order('created_at', { ascending: false });
+
+            if (error || !orders || orders.length === 0) {
+                container.innerHTML = '<div class="bg-slate-800/50 p-4 rounded-xl text-center text-slate-500 text-xs">No hay entregas completadas hoy.</div>';
+                if (contador) contador.innerText = '0 completadas';
+                return;
+            }
+
+            if (contador) contador.innerText = `${orders.length} completada${orders.length > 1 ? 's' : ''}`;
+
+            container.innerHTML = orders.map(o => `
+                <div class="bg-slate-800/80 border border-slate-700/60 rounded-xl p-4 space-y-2">
+                    <div class="flex justify-between items-start">
+                        <span class="text-white font-bold text-sm">${o.comercio}</span>
+                        <span class="text-emerald-400 font-bold text-sm">$${o.total}</span>
+                    </div>
+                    <p class="text-xs text-slate-400"><i class="fa-solid fa-location-dot mr-1"></i> ${o.direccion}</p>
+                    <div class="flex justify-between items-center text-xs pt-1 border-t border-slate-700/50 text-slate-400">
+                        <span>🕒 ${o.fechaHora || 'Completado'} (${o.pago || 'N/A'})</span>
+                        <span class="text-emerald-400 font-bold"><i class="fa-solid fa-check mr-1"></i> Entregado</span>
+                    </div>
+                    ${o.foto ? `<div class="mt-2"><img src="${o.foto}" class="w-16 h-16 object-cover rounded-lg border border-slate-700"/></div>` : ''}
+                </div>
+            `).join('');
+        }
+
         function suscripcionRealtimeChofer(nombreChofer) {
             _supabase
                 .channel('public:pedidos_chofer')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, payload => {
                     cargarPedidosChofer(nombreChofer);
+                    cargarHistorialChofer(nombreChofer);
                 })
                 .subscribe();
         }
 
         window.entregarPedido = async function(idOrden) {
+            const session = getSession();
             const pagoVal = document.getElementById(`pago_${idOrden}`).value;
             const fotoInput = document.getElementById(`foto_${idOrden}`);
             
@@ -524,12 +578,20 @@
                 reader.onload = async function(e) {
                     updateData.foto = e.target.result;
                     const { error } = await _supabase.from('pedidos').update(updateData).eq('id', idOrden);
-                    if (!error) alert('¡Entrega confirmada y sincronizada!');
+                    if (!error) {
+                        alert('¡Entrega confirmada y sincronizada!');
+                        cargarPedidosChofer(session.nombre);
+                        cargarHistorialChofer(session.nombre);
+                    }
                 };
                 reader.readAsDataURL(fotoInput.files[0]);
             } else {
                 const { error } = await _supabase.from('pedidos').update(updateData).eq('id', idOrden);
-                if (!error) alert('¡Entrega confirmada y sincronizada!');
+                if (!error) {
+                    alert('¡Entrega confirmada y sincronizada!');
+                    cargarPedidosChofer(session.nombre);
+                    cargarHistorialChofer(session.nombre);
+                }
             }
         };
 
@@ -555,3 +617,4 @@
     </script>
 </body>
 </html>
+
